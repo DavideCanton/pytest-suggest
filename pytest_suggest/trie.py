@@ -65,8 +65,9 @@ class Trie:
 
     @staticmethod
     def _insert_word(word: str, cur_word: str, cur_node: Node) -> tuple[str, Node]:
+        # TODO improve this
         cur_word, cur_node = Trie._backtrack_word(word, cur_word, cur_node)
-        cur_node = Trie._traverse_and_insert(cur_node, word[len(cur_word) :])
+        cur_node = Trie._traverse_and_insert(cur_node, word, len(cur_word))
         return word, cur_node
 
     @staticmethod
@@ -84,8 +85,9 @@ class Trie:
         return current_word, c
 
     @staticmethod
-    def _traverse_and_insert(current: Node, word: str) -> Node:
-        for char in word:
+    def _traverse_and_insert(current: Node, word: str, pos: int) -> Node:
+        for i in range(pos, len(word)):
+            char = word[i]
             if (child := current.get_child(char)) is None:
                 child = current.set_child(char, Node(char))
 
