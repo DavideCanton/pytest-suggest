@@ -54,52 +54,20 @@ class Trie:
 
     @staticmethod
     def from_words(words: Iterable[str]) -> Trie:
-        words = sorted(words)
         trie = Trie()
 
-        cur_node = trie.root
-        cur_word = ""
-
         for word in words:
-            cur_word, cur_node = Trie._insert_word(word, cur_word, cur_node)
+            cur = trie.root
+            for char in word:
+                if child := cur.get_child(char):
+                    cur = child
+                else:
+                    cur = cur.add_child(char)
+            cur.is_end = True
 
         trie._compress()
 
         return trie
-
-    @staticmethod
-    def _insert_word(word: str, cur_word: str, cur_node: Node) -> tuple[str, Node]:
-        # TODO improve this
-        cur_word, cur_node = Trie._backtrack_word(word, cur_word, cur_node)
-        cur_node = Trie._traverse_and_insert(cur_node, word, len(cur_word))
-        return word, cur_node
-
-    @staticmethod
-    def _backtrack_word(
-        word: str, current_word: str, current: Node
-    ) -> tuple[str, Node]:
-        c: Node | None = current
-
-        while word[: len(current_word)] != current_word:
-            assert c is not None
-            c = c.parent
-            current_word = current_word[:-1]
-
-        assert c is not None
-        return current_word, c
-
-    @staticmethod
-    def _traverse_and_insert(current: Node, word: str, pos: int) -> Node:
-        for i in range(pos, len(word)):
-            char = word[i]
-            last = i == len(word) - 1
-
-            if (child := current.get_child(char)) is None:
-                child = current.add_child(char, end=last)
-
-            current = child
-
-        return current
 
     def __contains__(self, word: str) -> bool:
         if node := self._find_node(word):

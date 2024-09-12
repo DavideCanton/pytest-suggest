@@ -167,7 +167,7 @@ class TestTrie:
         assert set(trie.words(prefix)) == set(expected)
 
     def test_str(self):
-        trie = Trie.from_words(WORDS)
+        trie = Trie.from_words(sorted(WORDS))
         s = """
  ├cas
    ✓├a [casa]
