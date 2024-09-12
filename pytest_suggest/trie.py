@@ -6,14 +6,18 @@ from dataclasses import dataclass, field
 
 @dataclass(eq=True, slots=True)
 class Node:
-    word: str
+    data: str
     children: dict[str, Node] = field(default_factory=dict)
     parent: Node | None = field(default=None, repr=False)
-    is_end: bool = field(default=False)
-    word_len: int = field(init=False, repr=False)
+    word: str | None = field(default=None, repr=False)
+    data_len: int = field(init=False, repr=False)
 
     def __post_init__(self):
-        self.word_len = len(self.word)
+        self.data_len = len(self.data)
+
+    @property
+    def is_end(self) -> bool:
+        return self.word is not None
 
     def get_child(self, child: str) -> Node | None:
         return self.children.get(child)
@@ -29,9 +33,9 @@ class Node:
 
         child = self.children.popitem()[1]
 
-        self.word += child.word
-        self.word_len += child.word_len
-        self.is_end = child.is_end
+        self.data += child.data
+        self.data_len += child.data_len
+        self.word = child.word
         self.children = child.children
 
         for grandchild in child.children.values():
@@ -41,7 +45,7 @@ class Node:
         return self.children[child]
 
     def __str__(self) -> str:
-        return f"Node {self.word!r} -> {sorted(self.children)!r}"
+        return f"Node {self.data!r} -> {sorted(self.children)!r}"
 
 
 class Trie:
@@ -93,7 +97,7 @@ class Trie:
 
             current = child
 
-        current.is_end = True
+        current.word = word
 
         return current
 
@@ -121,14 +125,12 @@ class Trie:
             child = current.get_child(char)
             if child is None:
                 return False
-            cur += child.word_len
+            cur += child.data_len
             current = child
 
-        return current.is_end and cur == len(word)
+        return current.word == word
 
     def words(self, prefix: str = "") -> Generator[str]:
-        cur_word: list[str] = []
-
         if prefix:
             current = self.root
             cur = 0
@@ -138,31 +140,22 @@ class Trie:
                 child = current.get_child(char)
                 if child is None:
                     return
-                cur += child.word_len
-                cur_word.append(child.word)
+                cur += child.data_len
                 current = child
 
-            if current.is_end:
-                yield "".join(cur_word)
-
-            stack = [(ch, len(cur_word)) for ch in current.children.values()]
+            stack = [current]
         else:
-            stack = [(self.root, 0)]
+            stack = [self.root]
 
         while stack:
-            current, depth = stack.pop()
-
-            if depth >= 0:
-                cur_word = cur_word[:depth]
-
-            if current.word is not None:
-                cur_word.append(current.word)
+            current = stack.pop()
 
             if current.is_end:
-                yield "".join(cur_word)
+                assert current.word is not None
+                yield current.word
 
             for child in current.children.values():
-                stack.append((child, depth + 1))
+                stack.append(child)
 
     def __str__(self) -> str:
         parts = []
@@ -176,8 +169,11 @@ class Trie:
         indent = " " * depth
         if node.is_end:
             indent = indent[:-1] + "✓"
+            trailer = f" [{node.word}]"
+        else:
+            trailer = ""
 
-        if node.word:
-            parts.append(f"{indent}├{node.word}")
+        if node.data:
+            parts.append(f"{indent}├{node.data}{trailer}")
         for child in node.children.values():
-            self._to_str(child, parts, depth + node.word_len)
+            self._to_str(child, parts, depth + node.data_len)
