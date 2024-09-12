@@ -2,29 +2,29 @@ from __future__ import annotations
 
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass, field
+import weakref
 
 
-@dataclass(eq=True, slots=True)
+@dataclass(eq=True, slots=True, weakref_slot=True)
 class Node:
-    data: str
+    word: str
+    data_len: int
     children: dict[str, Node] = field(default_factory=dict)
-    parent: Node | None = field(default=None, repr=False)
-    word: str | None = field(default=None, repr=False)
-    data_len: int = field(init=False, repr=False)
+    is_end: bool = False
 
-    def __post_init__(self):
-        self.data_len = len(self.data)
+    parent: Node | None = field(default=None, repr=False, init=False)
 
-    @property
-    def is_end(self) -> bool:
-        return self.word is not None
+    @staticmethod
+    def root(_data="", *, end: bool = False) -> Node:
+        return Node(data_len=len(_data), word=_data, is_end=end)
 
     def get_child(self, child: str) -> Node | None:
         return self.children.get(child)
 
-    def set_child(self, child: str, node: Node) -> Node:
-        self.children[child] = node
-        node.parent = self
+    def add_child(self, data: str, *, end: bool = False) -> Node:
+        node = Node(data_len=len(data), word=self.word + data, is_end=end)
+        self.children[data[0]] = node
+        node.parent = weakref.proxy(self)
         return node
 
     def merge_with_child(self) -> None:
@@ -33,10 +33,10 @@ class Node:
 
         child = self.children.popitem()[1]
 
-        self.data += child.data
         self.data_len += child.data_len
         self.word = child.word
         self.children = child.children
+        self.is_end = child.is_end
 
         for grandchild in child.children.values():
             grandchild.parent = self
@@ -45,12 +45,12 @@ class Node:
         return self.children[child]
 
     def __str__(self) -> str:
-        return f"Node {self.data!r} -> {sorted(self.children)!r}"
+        return f"Node {self.word!r} -> {sorted(self.children)!r}"
 
 
 class Trie:
     def __init__(self):
-        self.root = Node("")
+        self.root = Node.root()
 
     @staticmethod
     def from_words(words: Iterable[str]) -> Trie:
@@ -92,60 +92,30 @@ class Trie:
     def _traverse_and_insert(current: Node, word: str, pos: int) -> Node:
         for i in range(pos, len(word)):
             char = word[i]
+            last = i == len(word) - 1
+
             if (child := current.get_child(char)) is None:
-                child = current.set_child(char, Node(char))
+                child = current.add_child(char, end=last)
 
             current = child
-
-        current.word = word
 
         return current
 
-    def _compress(self) -> None:
-        stack = [self.root]
-
-        while stack:
-            current = stack.pop()
-            children = list(current.children.values())
-
-            # don't compress if there are multiple children or if the current node is an end
-            if len(children) != 1 or current.is_end:
-                stack.extend(children)
-                continue
-
-            current.merge_with_child()
-            stack.append(current)
-
     def __contains__(self, word: str) -> bool:
-        current = self.root
-        cur = 0
+        if node := self._find_node(word):
+            return node.is_end and node.word == word
 
-        while cur < len(word):
-            char = word[cur]
-            child = current.get_child(char)
-            if child is None:
-                return False
-            cur += child.data_len
-            current = child
-
-        return current.word == word
+        return False
 
     def words(self, prefix: str = "") -> Generator[str]:
+        stack: list[Node] = []
+
         if prefix:
-            current = self.root
-            cur = 0
-
-            while cur < len(prefix):
-                char = prefix[cur]
-                child = current.get_child(char)
-                if child is None:
-                    return
-                cur += child.data_len
-                current = child
-
-            stack = [current]
+            node = self._find_node(prefix)
+            if node is not None:
+                stack.append(node)
         else:
-            stack = [self.root]
+            stack.append(self.root)
 
         while stack:
             current = stack.pop()
@@ -165,6 +135,35 @@ class Trie:
     def __iter__(self) -> Generator[str]:
         yield from self.words()
 
+    def _find_node(self, prefix: str) -> Node | None:
+        current = self.root
+        cur = 0
+
+        while cur < len(prefix):
+            char = prefix[cur]
+            child = current.get_child(char)
+            if child is None:
+                return None
+            cur += child.data_len
+            current = child
+
+        return current
+
+    def _compress(self) -> None:
+        stack = [self.root]
+
+        while stack:
+            current = stack.pop()
+            children = list(current.children.values())
+
+            # don't compress if there are multiple children or if the current node is an end
+            if len(children) != 1 or current.is_end:
+                stack.extend(children)
+                continue
+
+            current.merge_with_child()
+            stack.append(current)
+
     def _to_str(self, node: Node, parts: list[str], depth: int):
         indent = " " * depth
         if node.is_end:
@@ -173,7 +172,8 @@ class Trie:
         else:
             trailer = ""
 
-        if node.data:
-            parts.append(f"{indent}├{node.data}{trailer}")
+        data = node.word[-node.data_len :]
+        if data:
+            parts.append(f"{indent}├{data}{trailer}")
         for child in node.children.values():
             self._to_str(child, parts, depth + node.data_len)
