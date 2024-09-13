@@ -126,7 +126,7 @@ class TestTrie:
             for k, v in node1.children.items():
                 _eq(v, node2.children[k])
 
-        _eq(trie.root, root)
+        _eq(trie._root, root)
 
     @pytest.mark.parametrize(
         ("word", "expected"),
@@ -181,3 +181,15 @@ class TestTrie:
  ✓├luto [pluto]"""
         s = s[1:]  # strip leading newline
         assert str(trie) == s
+
+    def test_duplicate_words(self):
+        words_with_duplicates = WORDS + WORDS
+        trie = Trie.from_words(words_with_duplicates)
+
+        # Ensure duplicates don't affect the trie structure
+        assert set(trie.words()) == set(WORDS)
+        assert set(trie) == set(WORDS)
+
+        # Ensure the duplicate words are still recognized as valid words
+        for word in ["casa", "casino", "pippo"]:
+            assert word in trie

@@ -50,14 +50,14 @@ class Node:
 
 class Trie:
     def __init__(self):
-        self.root = Node.root()
+        self._root = Node.root()
 
     @staticmethod
     def from_words(words: Iterable[str]) -> Trie:
         trie = Trie()
 
         for word in words:
-            cur = trie.root
+            cur = trie._root
             for char in word:
                 if child := cur.get_child(char):
                     cur = child
@@ -83,7 +83,7 @@ class Trie:
             if node is not None:
                 stack.append(node)
         else:
-            stack.append(self.root)
+            stack.append(self._root)
 
         while stack:
             current = stack.pop()
@@ -97,14 +97,14 @@ class Trie:
 
     def __str__(self) -> str:
         parts = []
-        self._to_str(self.root, parts, 1)
+        self._to_str(self._root, parts, 1)
         return "\n".join(parts)
 
     def __iter__(self) -> Generator[str]:
         yield from self.words()
 
     def _find_node(self, prefix: str) -> Node | None:
-        current = self.root
+        current = self._root
         cur = 0
 
         while cur < len(prefix):
@@ -118,7 +118,7 @@ class Trie:
         return current
 
     def _compress(self) -> None:
-        stack = [self.root]
+        stack = [self._root]
 
         while stack:
             current = stack.pop()
