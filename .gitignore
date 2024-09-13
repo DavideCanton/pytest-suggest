@@ -1,8 +1,12 @@
 .venv/
 __pycache__/
 .pytest_cache/
+pytest_suggest.egg-info/
+build/
+dist/
 *.pyc
 *.pyo
 *.txt
 
 main.py
+.pytest_suggest_index

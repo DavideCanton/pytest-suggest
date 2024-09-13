@@ -87,6 +87,9 @@ class Trie:
     def size(self) -> int:
         return self._size
 
+    def __len__(self) -> int:
+        return self._size
+
     @staticmethod
     def from_words(words: Iterable[str]) -> Trie:
         trie = Trie()
