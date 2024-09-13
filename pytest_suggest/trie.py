@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import pickle
+import weakref
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass, field
-import weakref
+from typing import BinaryIO
 
 
 @dataclass(slots=True, weakref_slot=True)
@@ -79,6 +81,11 @@ class Node:
 class Trie:
     def __init__(self):
         self._root = Node.root()
+        self._size = 0
+
+    @property
+    def size(self) -> int:
+        return self._size
 
     @staticmethod
     def from_words(words: Iterable[str]) -> Trie:
@@ -92,10 +99,18 @@ class Trie:
                 else:
                     cur = cur.add_child(char)
             cur.is_word = True
+            trie._size += 1
 
         trie._compress()
 
         return trie
+
+    @staticmethod
+    def load(from_: BinaryIO) -> Trie:
+        return pickle.load(from_)
+
+    def save(self, to: BinaryIO) -> None:
+        pickle.dump(self, to)
 
     def __contains__(self, word: str) -> bool:
         if node := self._find_node(word):
@@ -153,7 +168,7 @@ class Trie:
             children = list(current.children.values())
 
             # don't compress if there are multiple children or if the current node is an end
-            if len(children) != 1 or current.is_word:
+            if len(children) != 1 or current.is_word or current.part_len == 0:
                 stack.extend(children)
                 continue
 
