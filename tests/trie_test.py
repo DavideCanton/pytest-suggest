@@ -92,8 +92,23 @@ WORDS = ["casa", "casale", "casino", "casotto", "casinino", "pippo", "pluto"]
 class TestTrie:
     def test_build(self):
         trie = Trie.from_words(WORDS)
+        root = self._build_trie_manually()
+        self._check_node_eq(trie._root, root)
 
-        root = Node(
+    def test_save_load(self, tmp_path):
+        trie = Trie.from_words(WORDS)
+        path = tmp_path / "trie.pkl"
+
+        with path.open("wb") as f:
+            trie.save(f)
+
+        with path.open("rb") as f:
+            trie2 = Trie.load(f)
+
+        self._check_node_eq(trie._root, trie2._root)
+
+    def _build_trie_manually(self):
+        return Node(
             "",
             0,
             {
@@ -129,16 +144,14 @@ class TestTrie:
             },
         )
 
-        def _eq(node1: Node, node2: Node):
-            assert node1.prefix == node2.prefix
-            assert node1.part_len == node2.part_len
-            assert node1.is_word == node2.is_word
-            assert node1.children.keys() == node2.children.keys()
+    def _check_node_eq(self, node1: Node, node2: Node):
+        assert node1.prefix == node2.prefix
+        assert node1.part_len == node2.part_len
+        assert node1.is_word == node2.is_word
+        assert node1.children.keys() == node2.children.keys()
 
-            for k, v in node1.children.items():
-                _eq(v, node2.children[k])
-
-        _eq(trie._root, root)
+        for k, v in node1.children.items():
+            self._check_node_eq(v, node2.children[k])
 
     @pytest.mark.parametrize(
         ("word", "expected"),
