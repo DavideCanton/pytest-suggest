@@ -5,38 +5,66 @@ from dataclasses import dataclass, field
 import weakref
 
 
-@dataclass(eq=True, slots=True, weakref_slot=True)
+@dataclass(slots=True, weakref_slot=True)
 class Node:
-    word: str
-    data_len: int
+    """A node in a trie."""
+
+    prefix: str
+    """The prefix represented up to this node.
+    
+    This is the concatenation of the prefixes from the root to this node.
+    """
+    part_len: int
+    """The length of the part represented by this node.
+    
+    This is the length of the part of the prefix that is represented by this node,
+    so for example if the prefix is "abc" and this node represents "ab", then this
+    value is 2.
+    """
     children: dict[str, Node] = field(default_factory=dict)
-    is_end: bool = False
+    """The children of this node.
+
+    This is a mapping of the first character of the child to the child node.
+    """
+    is_word: bool = False
+    """Whether this node represents a word in the trie or just a prefix."""
 
     parent: Node | None = field(default=None, repr=False, init=False)
+    """The parent of this node.
+
+    This is a weak reference to the parent node.
+
+    The root node has no parent and this value is None.
+    """
 
     @staticmethod
-    def root(_data="", *, end: bool = False) -> Node:
-        return Node(data_len=len(_data), word=_data, is_end=end)
+    def root() -> Node:
+        """Creates the root node.
+
+        Returns:
+            Node: the root node.
+        """
+        return Node(part_len=0, prefix="", is_word=False)
 
     def get_child(self, child: str) -> Node | None:
         return self.children.get(child)
 
-    def add_child(self, data: str, *, end: bool = False) -> Node:
-        node = Node(data_len=len(data), word=self.word + data, is_end=end)
-        self.children[data[0]] = node
+    def add_child(self, part: str, *, is_word: bool = False) -> Node:
+        node = Node(part_len=len(part), prefix=self.prefix + part, is_word=is_word)
+        self.children[part[0]] = node
         node.parent = weakref.proxy(self)
         return node
 
     def merge_with_child(self) -> None:
-        if self.is_end or len(self.children) != 1:
-            raise RuntimeError("Cannot merge end node or with multiple children")
+        if self.is_word or len(self.children) != 1:
+            raise RuntimeError("Cannot merge a word node or with multiple children")
 
         child = self.children.popitem()[1]
 
-        self.data_len += child.data_len
-        self.word = child.word
+        self.part_len += child.part_len
+        self.prefix = child.prefix
         self.children = child.children
-        self.is_end = child.is_end
+        self.is_word = child.is_word
 
         for grandchild in child.children.values():
             grandchild.parent = self
@@ -45,7 +73,7 @@ class Node:
         return self.children[child]
 
     def __str__(self) -> str:
-        return f"Node {self.word!r} -> {sorted(self.children)!r}"
+        return f"Node {self.prefix!r} -> {sorted(self.children)!r}"
 
 
 class Trie:
@@ -63,7 +91,7 @@ class Trie:
                     cur = child
                 else:
                     cur = cur.add_child(char)
-            cur.is_end = True
+            cur.is_word = True
 
         trie._compress()
 
@@ -71,7 +99,7 @@ class Trie:
 
     def __contains__(self, word: str) -> bool:
         if node := self._find_node(word):
-            return node.is_end and node.word == word
+            return node.is_word and node.prefix == word
 
         return False
 
@@ -88,9 +116,9 @@ class Trie:
         while stack:
             current = stack.pop()
 
-            if current.is_end:
-                assert current.word is not None
-                yield current.word
+            if current.is_word:
+                assert current.prefix is not None
+                yield current.prefix
 
             for child in current.children.values():
                 stack.append(child)
@@ -112,7 +140,7 @@ class Trie:
             child = current.get_child(char)
             if child is None:
                 return None
-            cur += child.data_len
+            cur += child.part_len
             current = child
 
         return current
@@ -125,7 +153,7 @@ class Trie:
             children = list(current.children.values())
 
             # don't compress if there are multiple children or if the current node is an end
-            if len(children) != 1 or current.is_end:
+            if len(children) != 1 or current.is_word:
                 stack.extend(children)
                 continue
 
@@ -134,14 +162,14 @@ class Trie:
 
     def _to_str(self, node: Node, parts: list[str], depth: int):
         indent = " " * depth
-        if node.is_end:
+        if node.is_word:
             indent = indent[:-1] + "✓"
-            trailer = f" [{node.word}]"
+            trailer = f" [{node.prefix}]"
         else:
             trailer = ""
 
-        data = node.word[-node.data_len :]
+        data = node.prefix[-node.part_len :]
         if data:
             parts.append(f"{indent}├{data}{trailer}")
         for child in node.children.values():
-            self._to_str(child, parts, depth + node.data_len)
+            self._to_str(child, parts, depth + node.part_len)

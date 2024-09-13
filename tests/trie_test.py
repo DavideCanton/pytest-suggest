@@ -5,17 +5,24 @@ from pytest_suggest.trie import Node, Trie
 
 class TestNode:
     def test_init(self):
-        node = Node.root("test")
+        node = Node("prefix", 3, is_word=True)
+
+        assert node.prefix == "prefix"
+        assert node.part_len == 3
+        assert node.is_word is True
+        assert node.children == {}
+
+    def test_root(self):
+        node = Node.root()
 
         assert node.parent is None
-        assert node.data_len == 4
+        assert node.part_len == 0
         assert node.children == {}
-        assert node.is_end is False
-        assert node.word == "test"
+        assert node.is_word is False
+        assert node.prefix == ""
 
     def test_child(self):
-        parent = Node.root("parent", end=True)
-        assert parent.is_end
+        parent = Node.root()
 
         a = parent.add_child("abc")
         assert a.parent == parent
@@ -34,44 +41,49 @@ class TestNode:
             with pytest.raises(KeyError):
                 parent[k]
 
-    @pytest.mark.parametrize("childEnd", [True, False])
-    def test_merge(self, childEnd):
-        parent = Node.root("root/")
+    @pytest.mark.parametrize("child_is_word", [True, False])
+    def test_merge(self, child_is_word):
+        parent = Node.root()
 
-        a = parent.add_child("a/", end=childEnd)
-        b = a.add_child("b$", end=childEnd)
+        a = parent.add_child("a/", is_word=child_is_word)
+        b = a.add_child("b$", is_word=child_is_word)
         c = a.add_child("c$")
         parent.merge_with_child()
 
-        assert parent.is_end == childEnd
-        assert parent.word == "root/a/"
-        assert parent.data_len == 7
+        assert parent.is_word == child_is_word
+        assert parent.prefix == "a/"
+        assert parent.part_len == 2
         assert parent.children == a.children
         assert b.parent is parent
         assert c.parent is parent
 
     def test_merge_multiple_children(self):
-        parent = Node.root("root/")
+        parent = Node.root()
 
-        parent.add_child("a$", end=True)
-        parent.add_child("b$", end=True)
+        parent.add_child("a$", is_word=True)
+        parent.add_child("b$", is_word=True)
 
         with pytest.raises(RuntimeError):
             parent.merge_with_child()
 
     def test_merge_end(self):
-        parent = Node.root("root/", end=True)
-        parent.add_child("a$", end=True)
+        parent = Node.root()
+        c1 = parent.add_child("a/", is_word=True)
+        c1.add_child("b$", is_word=True)
 
         with pytest.raises(RuntimeError):
-            parent.merge_with_child()
+            c1.merge_with_child()
 
     def test_str(self):
-        node = Node.root("test")
-        node.add_child("abc")
-        node.add_child("bcd")
+        node = Node.root()
+        c1 = node.add_child("abc")
+        gc1 = c1.add_child("def")
+        c2 = node.add_child("bcd")
 
-        assert str(node) == "Node 'test' -> ['a', 'b']"
+        assert str(node) == "Node '' -> ['a', 'b']"
+        assert str(c1) == "Node 'abc' -> ['d']"
+        assert str(c2) == "Node 'bcd' -> []"
+        assert str(gc1) == "Node 'abcdef' -> []"
 
 
 WORDS = ["casa", "casale", "casino", "casotto", "casinino", "pippo", "pluto"]
@@ -92,35 +104,35 @@ class TestTrie:
                         "a": Node(
                             "casa",
                             1,
-                            {"l": Node("casale", 2, is_end=True)},
-                            is_end=True,
+                            {"l": Node("casale", 2, is_word=True)},
+                            is_word=True,
                         ),
                         "i": Node(
                             "casin",
                             2,
                             {
-                                "o": Node("casino", 1, is_end=True),
-                                "i": Node("casinino", 3, is_end=True),
+                                "o": Node("casino", 1, is_word=True),
+                                "i": Node("casinino", 3, is_word=True),
                             },
                         ),
-                        "o": Node("casotto", 4, is_end=True),
+                        "o": Node("casotto", 4, is_word=True),
                     },
                 ),
                 "p": Node(
                     "p",
                     1,
                     {
-                        "i": Node("pippo", 4, is_end=True),
-                        "l": Node("pluto", 4, is_end=True),
+                        "i": Node("pippo", 4, is_word=True),
+                        "l": Node("pluto", 4, is_word=True),
                     },
                 ),
             },
         )
 
         def _eq(node1: Node, node2: Node):
-            assert node1.word == node2.word
-            assert node1.data_len == node2.data_len
-            assert node1.is_end == node2.is_end
+            assert node1.prefix == node2.prefix
+            assert node1.part_len == node2.part_len
+            assert node1.is_word == node2.is_word
             assert node1.children.keys() == node2.children.keys()
 
             for k, v in node1.children.items():
