@@ -3,11 +3,9 @@ from __future__ import annotations
 import pickle
 import weakref
 from collections.abc import Generator, Iterable
-from dataclasses import dataclass, field
 from typing import BinaryIO
 
 
-@dataclass(slots=True, weakref_slot=True)
 class Node:
     """A node in a trie."""
 
@@ -23,21 +21,36 @@ class Node:
     so for example if the prefix is "abc" and this node represents "ab", then this
     value is 2.
     """
-    children: dict[str, Node] = field(default_factory=dict)
+    children: dict[str, Node]
     """The children of this node.
 
     This is a mapping of the first character of the child to the child node.
     """
-    is_word: bool = False
+    is_word: bool
     """Whether this node represents a word in the trie or just a prefix."""
 
-    parent: Node | None = field(default=None, repr=False, init=False)
+    parent: Node | None
     """The parent of this node.
 
     This is a weak reference to the parent node.
 
     The root node has no parent and this value is None.
     """
+
+    __slots__ = ("prefix", "part_len", "children", "is_word", "parent", "__weakref__")
+
+    def __init__(
+        self,
+        prefix: str,
+        part_len: int,
+        children: dict[str, Node] | None = None,
+        is_word: bool = False,
+    ) -> None:
+        self.prefix = prefix
+        self.part_len = part_len
+        self.children = children or {}
+        self.is_word = is_word
+        self.parent = None
 
     @staticmethod
     def root() -> Node:
