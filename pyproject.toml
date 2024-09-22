@@ -8,7 +8,7 @@ version = "0.0.0"
 authors = [{ name = "Davide Canton", email = "davide.canton5@gmail.com" }]
 description = "A pytest plugin to suggest test cases"
 readme = "README.md"
-dependencies = ["pytest>=8.0.0"]
+dependencies = ["pytest>=8.0.0", "zstd>=1.5.0"]
 optional-dependencies.dev = ["pytest-cov>=4.0.0", "build", "tox", "ruff"]
 requires-python = ">=3.8"
 
@@ -24,6 +24,7 @@ suggest = "pytest_suggest.plugin"
 [tool.pytest.ini_options]
 addopts = "--cov-report=html --cov-report=term --no-cov-on-fail -ra --import-mode=importlib"
 pythonpath = ["src"]
+markers = ["slow: mark test as slow"]
 
 [tool.coverage.run]
 source = ["src"]

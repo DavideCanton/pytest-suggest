@@ -7,12 +7,30 @@ from pytest_suggest.trie import Trie
 
 
 @pytest.fixture
-def run_app(monkeypatch):
-    def run_app(args):
+def run_app(monkeypatch: pytest.MonkeyPatch):
+    """Returns a function that, given a list of args, runs the main function."""
+
+    def run_app(args: list[str]) -> None:
         monkeypatch.setattr("sys.argv", ["pytest-suggest"] + args)
         suggest.main()
 
     return run_app
+
+
+@pytest.fixture
+def check_error(run_app, capsys):
+    """Returns a function that, given a list of args, checks that the provided error message is printed."""
+
+    def run(args: list[str], error: str):
+        try:
+            run_app(args)
+            pytest.fail("Test should have failed")
+        except SystemExit:
+            captured = capsys.readouterr()
+            assert error in captured.err
+            assert not captured.out
+
+    return run
 
 
 @pytest.mark.parametrize("shell", ["bash", "powershell"])
@@ -25,26 +43,18 @@ def test_autocompletion(run_app, shell, capsys):
     assert captured.out.rstrip() == read_file(shell)
 
 
-def test_invalid_shell(run_app, capsys):
-    try:
-        run_app(["autocompletion", "foo"])
-        pytest.fail("Test should have failed")
-    except SystemExit:
-        captured = capsys.readouterr()
-        assert (
-            "invalid choice: 'foo' (choose from 'bash', 'powershell')" in captured.err
-        )
-        assert not captured.out
+def test_invalid_shell(check_error):
+    check_error(
+        ["autocompletion", "foo"],
+        "invalid choice: 'foo' (choose from 'bash', 'powershell')",
+    )
 
 
-def test_missing_shell(run_app, capsys):
-    try:
-        run_app(["autocompletion"])
-        pytest.fail("Test should have failed")
-    except SystemExit:
-        captured = capsys.readouterr()
-        assert "the following arguments are required: shell" in captured.err
-        assert not captured.out
+def test_missing_shell(check_error):
+    check_error(
+        ["autocompletion"],
+        "the following arguments are required: shell",
+    )
 
 
 def test_suggest(run_app, capsys, monkeypatch, tmp_path):
@@ -63,14 +73,11 @@ def test_suggest(run_app, capsys, monkeypatch, tmp_path):
     assert captured.out.rstrip() == "foo\nfoobar"
 
 
-def test_missing_prefix(run_app, capsys):
-    try:
-        run_app(["suggest"])
-        pytest.fail("Test should have failed")
-    except SystemExit:
-        captured = capsys.readouterr()
-        assert "the following arguments are required: prefix" in captured.err
-        assert not captured.out
+def test_missing_prefix(check_error):
+    check_error(
+        ["suggest"],
+        "the following arguments are required: prefix",
+    )
 
 
 def read_file(shell):

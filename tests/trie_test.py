@@ -1,4 +1,6 @@
+import string
 import pytest
+import random
 
 from pytest_suggest.trie import Node, Trie
 
@@ -97,6 +99,26 @@ class TestTrie:
 
     def test_save_load(self, tmp_path):
         trie = Trie.from_words(WORDS)
+        path = tmp_path / "trie.pkl"
+
+        with path.open("wb") as f:
+            trie.save(f)
+
+        with path.open("rb") as f:
+            trie2 = Trie.load(f)
+
+        self._check_node_eq(trie._root, trie2._root)
+
+    @pytest.mark.slow
+    def test_save_load_big(self, tmp_path):
+        words = set()
+        chars = list(set(string.printable) - set(string.whitespace))
+
+        while len(words) < 10000:
+            word = "".join(random.choices(chars, k=20))
+            words.add(word)
+
+        trie = Trie.from_words(words)
         path = tmp_path / "trie.pkl"
 
         with path.open("wb") as f:
