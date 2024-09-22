@@ -9,28 +9,25 @@ authors = [{ name = "Davide Canton", email = "davide.canton5@gmail.com" }]
 description = "A pytest plugin to suggest test cases"
 readme = "README.md"
 dependencies = ["pytest>=8.0.0"]
-optional-dependencies.dev = ["pytest-cov>=4.0.0", "build", "tox"]
+optional-dependencies.dev = ["pytest-cov>=4.0.0", "build", "tox", "ruff"]
 requires-python = ">=3.8"
 
 [project.scripts]
 pytest-suggest = "pytest_suggest.cli.suggest:main"
 
+[tool.setuptools.package-data]
+"*" = ["*.sh", "*.ps1"]
+
 [project.entry-points."pytest11"]
 suggest = "pytest_suggest.plugin"
 
 [tool.pytest.ini_options]
-addopts = "--cov-report=html --cov-report=term --no-cov-on-fail -ra"
+addopts = "--cov-report=html --cov-report=term --no-cov-on-fail -ra --import-mode=importlib"
+pythonpath = ["src"]
 
-# code coverage configuration
-# refer to https://coverage.readthedocs.io/en/latest/config.html
 [tool.coverage.run]
+source = ["src"]
 branch = true
-
-[tool.coverage.paths]
-source = "."
-
-[tool.coverage.report]
-include = ["pytest_suggest/**"]
 
 [tool.coverage.html]
 directory = "coverage"

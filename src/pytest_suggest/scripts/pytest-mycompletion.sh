@@ -34,7 +34,7 @@ _pytest_suggest_completions() {
         _get_comp_words_by_ref -n : cur
 
         # remove \r since compgen in mingw returns \r\n
-        COMPREPLY=($(compgen -W '$(pytest-suggest "$cur")' | sed 's/\r//'))
+        COMPREPLY=($(compgen -W '$(pytest-suggest suggest "$cur")' | sed 's/\r//'))
 
         __ltrim_colon_completions "$cur"
     else

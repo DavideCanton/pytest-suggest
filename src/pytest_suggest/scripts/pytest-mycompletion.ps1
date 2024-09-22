@@ -5,7 +5,7 @@ $scriptblock = {
         $cursorPosition
     )
 
-    $res = pytest-suggest $wordToComplete
+    $res = pytest-suggest suggest $wordToComplete
     $res | ForEach-Object {
         [System.Management.Automation.CompletionResult]::new(
             $_, # completionText
