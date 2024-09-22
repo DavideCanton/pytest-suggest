@@ -1,6 +1,7 @@
-import string
-import pytest
 import random
+import string
+
+import pytest
 
 from pytest_suggest.trie import Node, Trie
 

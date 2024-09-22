@@ -13,7 +13,7 @@ def pytest_addoption(parser):
         action="store_true",
         dest="build_suggestion_index",
         default=False,
-        help="Foo",
+        help="Builds the suggestion index to be used by the autocompletion script. It does not run any test.",
     )
 
 
