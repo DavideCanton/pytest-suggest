@@ -1,13 +1,13 @@
 #/usr/bin/env bash
 
 _check() {
-    type -t __ltrim_colon_completions &>/dev/null
+    type -t $1 &>/dev/null
     echo $?
 }
 
 # sets __ltrim_colon_completions if not available
 # since some shells like mingw don't have this
-if [ $(_check) -ne 0 ]; then
+if [ $(_check "__ltrim_colon_completions") -ne 0 ]; then
     # copied from https://github.com/scop/bash-completion/blob/1.x/bash_completion#L374
     __ltrim_colon_completions() {
         # If word-to-complete contains a colon,
@@ -29,14 +29,20 @@ if [ $(_check) -ne 0 ]; then
 fi
 
 _pytest_suggest_completions() {
-    local cur
+    if [[ "${COMP_WORDS[$COMP_CWORD]}" =~ ^[^-].* ]]; then
+        local cur
+        _get_comp_words_by_ref -n : cur
 
-    _get_comp_words_by_ref -n : cur
+        # remove \r since compgen in mingw returns \r\n
+        COMPREPLY=($(compgen -W '$(pytest-suggest "$cur")' | sed 's/\r//'))
 
-    # remove \r since compgen in mingw returns \r\n
-    COMPREPLY=($(compgen -W '$(pytest-suggest "$cur")' | sed 's/\r//'))
-
-    __ltrim_colon_completions "$cur"
+        __ltrim_colon_completions "$cur"
+    else
+        _pytest
+    fi
 }
 
+if [ -f "/usr/share/bash-completion/completions/pytest" ]; then
+    source /usr/share/bash-completion/completions/pytest
+fi
 complete -o bashdefault -o default -F _pytest_suggest_completions pytest
