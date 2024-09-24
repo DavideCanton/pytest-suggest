@@ -5,7 +5,7 @@ import weakref
 from collections.abc import Generator, Iterable
 from typing import BinaryIO
 
-import zstd
+import bz2
 
 
 class Node:
@@ -125,11 +125,11 @@ class Trie:
 
     @staticmethod
     def load(from_: BinaryIO) -> Trie:
-        data = zstd.decompress(from_.read())
+        data = bz2.decompress(from_.read())
         return pickle.loads(data)
 
     def save(self, to: BinaryIO) -> None:
-        data = zstd.compress(pickle.dumps(self))
+        data = bz2.compress(pickle.dumps(self))
         to.write(data)
 
     def __contains__(self, word: str) -> bool:
