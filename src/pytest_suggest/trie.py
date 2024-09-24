@@ -160,7 +160,8 @@ class Trie:
 
     def __str__(self) -> str:
         parts = []
-        self._to_str(self._root, parts, 1)
+        self._to_str(self._root, parts, 0)
+        parts[0] = "┌" + parts[0][1:]
         return "\n".join(parts)
 
     def __iter__(self) -> Generator[str]:
@@ -195,16 +196,27 @@ class Trie:
             current.merge_with_child()
             stack.append(current)
 
-    def _to_str(self, node: Node, parts: list[str], depth: int):
-        indent = " " * depth
-        if node.is_word:
-            indent = indent[:-1] + "✓"
-            trailer = f" [{node.prefix}]"
-        else:
-            trailer = ""
+    def _to_str(self, node: Node, parts: list[str], depth: int) -> None:
+        children_count = len(node.children)
+        for i, child in enumerate(node.children.values()):
+            is_last = i == children_count - 1
 
-        data = node.prefix[-node.part_len :]
-        if data:
-            parts.append(f"{indent}├{data}{trailer}")
-        for child in node.children.values():
-            self._to_str(child, parts, depth + node.part_len)
+            if depth == 1:
+                part = ["  "]
+            else:
+                part = ["│ "] * depth
+
+            if is_last:
+                part.append("└")
+            else:
+                part.append("├")
+
+            part.append("─")
+            part.append(child.prefix[-child.part_len :])
+
+            if child.is_word:
+                part.append(" *")
+
+            parts.append("".join(part))
+
+            self._to_str(child, parts, depth + 1)

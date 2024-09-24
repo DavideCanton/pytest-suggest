@@ -217,17 +217,20 @@ class TestTrie:
     def test_str(self):
         trie = Trie.from_words(sorted(WORDS))
         s = """
- ├cas
-   ✓├a [casa]
-    ✓├le [casale]
-    ├in
-     ✓├ino [casinino]
-     ✓├o [casino]
-   ✓├otto [casotto]
- ├p
- ✓├ippo [pippo]
- ✓├luto [pluto]"""
+ ┌─cas
+ │ ├─a *
+ │ │ └─le *
+ │ ├─in
+ │ │ ├─ino *
+ │ │ └─o *
+ │ └─otto *
+ └─p
+   ├─ippo *
+   └─luto *"""
         s = s[1:]  # strip leading newline
+
+        print()
+        print(str(trie))
         assert str(trie) == s
 
     def test_duplicate_words(self):
