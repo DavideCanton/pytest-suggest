@@ -64,15 +64,32 @@ class Node:
         return Node(part_len=0, prefix="", is_word=False)
 
     def get_child(self, child: str) -> Node | None:
+        """Returns the child node for the given character, or None if it doesn't exist."""
         return self.children.get(child)
 
     def add_child(self, part: str, *, is_word: bool = False) -> Node:
+        """Adds a child node for the given part.
+
+        Also sets `self` as the parent node for the newly created node.
+
+        Args:
+            part (str): the part to add.
+            is_word (bool, optional): whether the part is a word. Defaults to False.
+
+        Returns:
+            Node: the child node.
+        """
         node = Node(part_len=len(part), prefix=self.prefix + part, is_word=is_word)
         self.children[part[0]] = node
         node.parent = weakref.proxy(self)
         return node
 
     def merge_with_child(self) -> None:
+        """Merges this node with its only child.
+
+        Raises:
+            RuntimeError: if the node is not a word node or if it has multiple children.
+        """
         if self.is_word or len(self.children) != 1:
             raise RuntimeError("Cannot merge a word node or with multiple children")
 
@@ -87,6 +104,7 @@ class Node:
             grandchild.parent = self
 
     def __getitem__(self, child: str) -> Node:
+        """Returns the child node for the given character."""
         return self.children[child]
 
     def __str__(self) -> str:
@@ -94,19 +112,41 @@ class Node:
 
 
 class Trie:
+    """A trie data structure.
+
+    It represents a set of words, and it's optimized for fast lookups based on a prefix.
+    """
+
     def __init__(self):
+        """Initializes an empty trie.
+
+        The trie is initialized with an empty root node and a size of 0.
+        """
         self._root = Node.root()
         self._size = 0
 
     @property
     def size(self) -> int:
+        """The number of words in the trie."""
         return self._size
 
     def __len__(self) -> int:
+        """The number of words in the trie."""
         return self._size
 
     @staticmethod
     def from_words(words: Iterable[str]) -> Trie:
+        """Creates a trie from a list of words.
+
+        The trie is compressed after the creation by merging nodes that have
+        a single child.
+
+        Args:
+            words (Iterable[str]): the list of words.
+
+        Returns:
+            Trie: the trie.
+        """
         trie = Trie()
 
         for word in words:
@@ -125,20 +165,48 @@ class Trie:
 
     @staticmethod
     def load(from_: BinaryIO) -> Trie:
+        """Loads a trie from a file.
+
+        The trie is assumed to be compressed using ``bz2.compress``.
+
+        Args:
+            from_ (BinaryIO): the file to load from.
+
+        Returns:
+            Trie: the loaded trie.
+        """
         data = bz2.decompress(from_.read())
         return pickle.loads(data)
 
     def save(self, to: BinaryIO) -> None:
+        """Saves the trie to a file.
+
+        The trie is pickled, then compressed using ``bz2.compress``.
+
+        Args:
+            to (BinaryIO): the file to save to.
+        """
         data = bz2.compress(pickle.dumps(self))
         to.write(data)
 
     def __contains__(self, word: str) -> bool:
+        """Checks if the given word is in the trie."""
         if node := self._find_node(word):
             return node.is_word and node.prefix == word
 
         return False
 
     def words(self, prefix: str = "") -> Generator[str]:
+        """Returns all words in the trie that start with the given prefix.
+
+        If the prefix is empty, all words in the trie are returned.
+
+        Args:
+            prefix (str, optional): the prefix to search for. Defaults to "".
+
+        Yields:
+            Generator[str]: the words in the trie that start with the given prefix.
+        """
         stack: list[Node] = []
 
         if prefix:
@@ -159,15 +227,18 @@ class Trie:
                 stack.append(child)
 
     def __str__(self) -> str:
+        """Returns a string representation of the trie."""
         parts = []
-        self._to_str(self._root, parts, 0)
+        self._to_str(self._root, parts, 0, False)
         parts[0] = "┌" + parts[0][1:]
         return "\n".join(parts)
 
     def __iter__(self) -> Generator[str]:
+        """Returns an iterator over all words in the trie."""
         yield from self.words()
 
     def _find_node(self, prefix: str) -> Node | None:
+        """Finds the node for the given prefix."""
         current = self._root
         cur = 0
 
@@ -182,6 +253,7 @@ class Trie:
         return current
 
     def _compress(self) -> None:
+        """Compresses the trie by merging nodes that have a single child."""
         stack = [self._root]
 
         while stack:
@@ -196,13 +268,16 @@ class Trie:
             current.merge_with_child()
             stack.append(current)
 
-    def _to_str(self, node: Node, parts: list[str], depth: int) -> None:
+    def _to_str(
+        self, node: Node, parts: list[str], depth: int, parent_is_last: bool
+    ) -> None:
+        """Recursively creates a string representation of the trie."""
         children_count = len(node.children)
         for i, child in enumerate(node.children.values()):
             is_last = i == children_count - 1
 
-            if depth == 1:
-                part = ["  "]
+            if parent_is_last:
+                part = ["│ "] * (depth - 1) + ["  "]
             else:
                 part = ["│ "] * depth
 
@@ -219,4 +294,4 @@ class Trie:
 
             parts.append("".join(part))
 
-            self._to_str(child, parts, depth + 1)
+            self._to_str(child, parts, depth + 1, is_last)
