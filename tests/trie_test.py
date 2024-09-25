@@ -6,7 +6,21 @@ import pytest
 from pytest_suggest.trie import Node, Trie
 
 
+def _check_node_eq(node1: Node, node2: Node):
+    assert node1.prefix == node2.prefix
+    assert node1.part_len == node2.part_len
+    assert node1.is_word == node2.is_word
+    assert node1.children.keys() == node2.children.keys()
+
+    for k, v in node1.children.items():
+        _check_node_eq(v, node2.children[k])
+
+
 class TestNode:
+    root_prefix = pytest.mark.parametrize(
+        "root_prefix", (pytest.param("", id="no_prefix"), "root")
+    )
+
     def test_init(self):
         node = Node("prefix", 3, is_word=True)
 
@@ -88,6 +102,99 @@ class TestNode:
         assert str(c2) == "Node 'bcd' -> []"
         assert str(gc1) == "Node 'abcdef' -> []"
 
+    def test_dict(self):
+        node = Node.root()
+        c1 = node.add_child("abc")
+        c1.add_child("def", is_word=True)
+        c2 = node.add_child("bcd", is_word=True)
+        c2.add_child("efg", is_word=True)
+
+        exp = {
+            "c": {
+                "a": {
+                    "c": {"d": {"l": 3, "p": "def", "w": True}},
+                    "l": 3,
+                    "p": "abc",
+                    "w": False,
+                },
+                "b": {
+                    "c": {"e": {"l": 3, "p": "efg", "w": True}},
+                    "l": 3,
+                    "p": "bcd",
+                    "w": True,
+                },
+            },
+            "l": 0,
+            "p": "",
+            "w": False,
+        }
+
+        assert node._to_dict() == exp
+
+        loaded = Node._from_dict(exp)
+        _check_node_eq(node, loaded)
+
+    @root_prefix
+    def test_tree(self, root_prefix):
+        root = Node(root_prefix, len(root_prefix))
+        c1 = root.add_child("abc", is_word=True)
+
+        c11 = c1.add_child("def", is_word=False)
+        c11.add_child("ghi", is_word=True)
+        c11.add_child("jk", is_word=True)
+
+        c1.add_child("lk", is_word=True)
+
+        c2 = root.add_child("bcd", is_word=False)
+        c21 = c2.add_child("efg", is_word=True)
+        c21.add_child("hij", is_word=True)
+
+        c2.add_child("pq", is_word=True)
+
+        f = "root\n├" if root_prefix else "┌"
+        s = f"""
+{f}─abc *
+│ ├─def
+│ │ ├─ghi *
+│ │ └─jk *
+│ └─lk *
+└─bcd
+  ├─efg *
+  │ └─hij *
+  └─pq *"""
+        # strip first newline
+        s = s[1:]
+
+        assert root.tree() == s
+
+    @root_prefix
+    def test_tree_only_root(self, root_prefix):
+        root = Node(root_prefix, len(root_prefix))
+        if root_prefix:
+            assert root.tree() == "root"
+        else:
+            assert root.tree() == ""
+
+    @root_prefix
+    @pytest.mark.parametrize("grandchild", (True, False))
+    def test_tree_single_child_root(self, root_prefix, grandchild):
+        root = Node(root_prefix, len(root_prefix))
+        n = root.add_child("abc", is_word=True)
+
+        if grandchild:
+            n.add_child("def", is_word=True)
+
+        if root_prefix:
+            s = "root\n└"
+        else:
+            s = "─"
+
+        s += "─abc *"
+        if grandchild:
+            s += "\n  └─def *"
+
+        assert root.tree() == s
+
 
 WORDS = ["casa", "casale", "casino", "casotto", "casinino", "pippo", "pluto"]
 
@@ -96,7 +203,7 @@ class TestTrie:
     def test_build(self):
         trie = Trie.from_words(WORDS)
         root = self._build_trie_manually()
-        self._check_node_eq(trie._root, root)
+        _check_node_eq(trie._root, root)
 
     def test_save_load(self, tmp_path):
         trie = Trie.from_words(WORDS)
@@ -108,7 +215,7 @@ class TestTrie:
         with path.open("rb") as f:
             trie2 = Trie.load(f)
 
-        self._check_node_eq(trie._root, trie2._root)
+        _check_node_eq(trie._root, trie2._root)
 
     @pytest.mark.slow
     def test_save_load_big(self, tmp_path):
@@ -128,7 +235,7 @@ class TestTrie:
         with path.open("rb") as f:
             trie2 = Trie.load(f)
 
-        self._check_node_eq(trie._root, trie2._root)
+        _check_node_eq(trie._root, trie2._root)
 
     def _build_trie_manually(self):
         return Node(
@@ -166,15 +273,6 @@ class TestTrie:
                 ),
             },
         )
-
-    def _check_node_eq(self, node1: Node, node2: Node):
-        assert node1.prefix == node2.prefix
-        assert node1.part_len == node2.part_len
-        assert node1.is_word == node2.is_word
-        assert node1.children.keys() == node2.children.keys()
-
-        for k, v in node1.children.items():
-            self._check_node_eq(v, node2.children[k])
 
     @pytest.mark.parametrize(
         ("word", "expected"),
@@ -216,20 +314,7 @@ class TestTrie:
 
     def test_str(self):
         trie = Trie.from_words(sorted(WORDS))
-        s = """
-┌─cas
-│ ├─a *
-│ │ └─le *
-│ ├─in
-│ │ ├─ino *
-│ │ └─o *
-│ └─otto *
-└─p
-  ├─ippo *
-  └─luto *"""
-        s = s[1:]  # strip leading newline
-
-        assert str(trie) == s
+        assert str(trie) == trie._root.tree()
 
     def test_duplicate_words(self):
         words_with_duplicates = WORDS + WORDS

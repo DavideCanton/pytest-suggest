@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import pickle
+import bz2
 import weakref
 from collections.abc import Generator, Iterable
-from typing import BinaryIO
+from typing import Any, BinaryIO
 
-import bz2
+import orjson
 
 
 class Node:
@@ -63,6 +63,11 @@ class Node:
         """
         return Node(part_len=0, prefix="", is_word=False)
 
+    @property
+    def prefix_part(self) -> str:
+        """The part of the prefix represented by this node."""
+        return self.prefix[-self.part_len :]
+
     def get_child(self, child: str) -> Node | None:
         """Returns the child node for the given character, or None if it doesn't exist."""
         return self.children.get(child)
@@ -109,6 +114,70 @@ class Node:
 
     def __str__(self) -> str:
         return f"Node {self.prefix!r} -> {sorted(self.children)!r}"
+
+    def _to_dict(self) -> dict[str, Any]:
+        """Returns a dictionary representation of the node."""
+        node_dict = {"p": self.prefix_part, "l": self.part_len, "w": self.is_word}
+
+        children = {k: v._to_dict() for k, v in self.children.items()}
+        if children:
+            node_dict["c"] = children
+
+        return node_dict
+
+    @staticmethod
+    def _from_dict(data: dict[str, Any], prefix: str = "") -> Node:
+        """Creates a node from a dictionary representation."""
+        prefix = prefix + data["p"]
+        node = Node(prefix=prefix, part_len=data["l"], is_word=data["w"])
+        if children := data.get("c"):
+            for k, child in children.items():
+                child_node = Node._from_dict(child, prefix)
+                node.children[k] = child_node
+                child_node.parent = weakref.proxy(node)
+
+        return node
+
+    def tree(self) -> str:
+        """Returns a string representation of the node."""
+        parts = []
+        if self.prefix:
+            parts.append(self.prefix)
+
+        self._tree(parts, [])
+
+        if not self.prefix and parts:
+            if len(self.children) == 1:
+                repl = "─"
+            else:
+                repl = "┌"
+
+            parts[0] = repl + parts[0][1:]
+
+        return "\n".join(parts)
+
+    def _tree(self, parts: list[str], current_part: list[str]) -> None:
+        """Recursively creates a string representation of the node."""
+        children_count = len(self.children)
+        for i, child in enumerate(self.children.values()):
+            is_last = i == children_count - 1
+
+            part = current_part.copy()
+
+            if is_last:
+                part.append("└")
+            else:
+                part.append("├")
+
+            part.append("─")
+            part.append(child.prefix_part)
+
+            if child.is_word:
+                part.append(" *")
+
+            parts.append("".join(part))
+
+            child._tree(parts, current_part + ["  " if is_last else "│ "])
 
 
 class Trie:
@@ -175,18 +244,28 @@ class Trie:
         Returns:
             Trie: the loaded trie.
         """
-        data = bz2.decompress(from_.read())
-        return pickle.loads(data)
+        data = orjson.loads(bz2.decompress(from_.read()))
+        trie = Trie()
+        try:
+            trie._root = Node._from_dict(data["r"])
+            trie._size = data["s"]
+        except KeyError as e:
+            raise ValueError("Invalid trie data") from e
+        return trie
 
     def save(self, to: BinaryIO) -> None:
         """Saves the trie to a file.
 
-        The trie is pickled, then compressed using ``bz2.compress``.
+        The trie is saved as a dictionary, then compressed using ``bz2.compress``.
 
         Args:
             to (BinaryIO): the file to save to.
         """
-        data = bz2.compress(pickle.dumps(self))
+        trie_dict = {
+            "r": self._root._to_dict(),
+            "s": self._size,
+        }
+        data = bz2.compress(orjson.dumps(trie_dict))
         to.write(data)
 
     def __contains__(self, word: str) -> bool:
@@ -228,10 +307,7 @@ class Trie:
 
     def __str__(self) -> str:
         """Returns a string representation of the trie."""
-        parts = []
-        self._to_str(self._root, parts, 0, False)
-        parts[0] = "┌" + parts[0][1:]
-        return "\n".join(parts)
+        return self._root.tree()
 
     def __iter__(self) -> Generator[str]:
         """Returns an iterator over all words in the trie."""
@@ -267,31 +343,3 @@ class Trie:
 
             current.merge_with_child()
             stack.append(current)
-
-    def _to_str(
-        self, node: Node, parts: list[str], depth: int, parent_is_last: bool
-    ) -> None:
-        """Recursively creates a string representation of the trie."""
-        children_count = len(node.children)
-        for i, child in enumerate(node.children.values()):
-            is_last = i == children_count - 1
-
-            if parent_is_last:
-                part = ["│ "] * (depth - 1) + ["  "]
-            else:
-                part = ["│ "] * depth
-
-            if is_last:
-                part.append("└")
-            else:
-                part.append("├")
-
-            part.append("─")
-            part.append(child.prefix[-child.part_len :])
-
-            if child.is_word:
-                part.append(" *")
-
-            parts.append("".join(part))
-
-            self._to_str(child, parts, depth + 1, is_last)
