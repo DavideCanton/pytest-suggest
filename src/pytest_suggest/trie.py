@@ -162,7 +162,7 @@ class Node:
         for i, child in enumerate(self.children.values()):
             is_last = i == children_count - 1
 
-            part = current_part.copy()
+            part = []
 
             if is_last:
                 part.append("└")
@@ -175,9 +175,11 @@ class Node:
             if child.is_word:
                 part.append(" *")
 
-            parts.append("".join(part))
+            parts.append("".join(current_part + part))
 
-            child._tree(parts, current_part + ["  " if is_last else "│ "])
+            current_part.append("  " if is_last else "│ ")
+            child._tree(parts, current_part)
+            current_part.pop()
 
 
 class Trie:
