@@ -1,16 +1,21 @@
 {
-    "python.testing.pytestArgs": ["tests"],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
+    "editor.formatOnSave": true,
     "files.exclude": {
-        "**/.git": true,
-        "**/.svn": true,
-        "**/.hg": true,
-        "**/CVS": true,
         "**/.DS_Store": true,
-        "**/Thumbs.db": true,
-        "**/__pycache__": true,
+        "**/.git": true,
+        "**/.hg": true,
         "**/.pytest_cache": true,
-        "**/.ruff_cache": true
-    }
+        "**/.ruff_cache": true,
+        "**/.svn": true,
+        "**/CVS": true,
+        "**/Thumbs.db": true,
+        "**/__pycache__": true
+    },
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "ruff.importStrategy": "fromEnvironment",
+    "ruff.organizeImports": true
 }
