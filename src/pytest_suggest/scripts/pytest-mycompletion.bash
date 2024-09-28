@@ -46,4 +46,4 @@ if [ -f "/usr/share/bash-completion/completions/pytest" ]; then
     source /usr/share/bash-completion/completions/pytest
 fi
 
-complete -F _pytest_suggest_completions pytest
+complete -o default -o bashdefault -F _pytest_suggest_completions pytest
