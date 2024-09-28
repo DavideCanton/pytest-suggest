@@ -37,7 +37,7 @@ def emit_autocomplete_script(shell: str) -> None:
     scripts_folder = Path(__file__).parent.parent / "scripts"
 
     if shell == "bash":
-        file = "pytest-mycompletion.sh"
+        file = "pytest-mycompletion.bash"
     elif shell == "powershell":
         file = "pytest-mycompletion.ps1"
     else:

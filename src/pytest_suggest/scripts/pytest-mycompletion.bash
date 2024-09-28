@@ -1,5 +1,3 @@
-#/usr/bin/env bash
-
 _check() {
     type -t $1 &>/dev/null
     echo $?
@@ -9,6 +7,7 @@ _check() {
 # since some shells like mingw don't have this
 if [ $(_check "__ltrim_colon_completions") -ne 0 ]; then
     # copied from https://github.com/scop/bash-completion/blob/1.x/bash_completion#L374
+
     __ltrim_colon_completions() {
         # If word-to-complete contains a colon,
         # and bash-version < 4,
@@ -45,4 +44,5 @@ _pytest_suggest_completions() {
 if [ -f "/usr/share/bash-completion/completions/pytest" ]; then
     source /usr/share/bash-completion/completions/pytest
 fi
+
 complete -o bashdefault -o default -F _pytest_suggest_completions pytest

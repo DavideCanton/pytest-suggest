@@ -82,7 +82,7 @@ def test_missing_prefix(check_error):
 
 def read_file(shell):
     if shell == "bash":
-        file = "pytest-mycompletion.sh"
+        file = "pytest-mycompletion.bash"
     elif shell == "powershell":
         file = "pytest-mycompletion.ps1"
     else:
