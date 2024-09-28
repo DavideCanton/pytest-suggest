@@ -1,4 +1,8 @@
 {
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true
+    },
     "editor.formatOnSave": true,
     "files.exclude": {
         "**/.DS_Store": true,
@@ -11,9 +15,8 @@
         "**/Thumbs.db": true,
         "**/__pycache__": true
     },
-    "python.testing.pytestArgs": [
-        "tests"
-    ],
+    "python.analysis.typeCheckingMode": "standard",
+    "python.testing.pytestArgs": ["tests"],
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "ruff.importStrategy": "fromEnvironment",
