@@ -37,7 +37,8 @@ _pytest_suggest_completions() {
 
         __ltrim_colon_completions "$cur"
     else
-        _pytest
+        # use default pytest completion
+        _pytest pytest 2> /dev/null
     fi
 }
 
@@ -45,4 +46,4 @@ if [ -f "/usr/share/bash-completion/completions/pytest" ]; then
     source /usr/share/bash-completion/completions/pytest
 fi
 
-complete -o bashdefault -o default -F _pytest_suggest_completions pytest
+complete -F _pytest_suggest_completions pytest
