@@ -222,8 +222,10 @@ class TestTrie:
         words = set()
         chars = list(set(string.printable) - set(string.whitespace))
 
+        rand = random.Random(42)
+
         while len(words) < 10000:
-            word = "".join(random.choices(chars, k=20))
+            word = "".join(rand.choices(chars, k=20))
             words.add(word)
 
         trie = Trie.from_words(words)

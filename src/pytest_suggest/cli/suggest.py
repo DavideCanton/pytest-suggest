@@ -1,20 +1,26 @@
 from argparse import ArgumentParser
 from pathlib import Path
+import sys
 
 from pytest_suggest.constants import FILE_NAME
 from pytest_suggest.trie import Trie
 
 
 def parse_args() -> ArgumentParser:
-    parser = ArgumentParser()
+    parser = ArgumentParser(
+        description="pytest-suggest helper tool for providing shell integration setups and autocomplete"
+    )
 
     subparsers = parser.add_subparsers(dest="action", required=True)
 
     suggest = subparsers.add_parser("suggest", help="Provide suggestions")
     suggest.add_argument("prefix", type=str, help="Prefix to search for")
+    suggest.add_argument(
+        "-i", "--index", type=str, help="Path to index file", default=FILE_NAME
+    )
 
     autocompletion = subparsers.add_parser(
-        "autocompletion", help="Set autocompletion script"
+        "autocompletion", help="Emit autocompletion script"
     )
     autocompletion.add_argument(
         "shell",
@@ -25,12 +31,15 @@ def parse_args() -> ArgumentParser:
     return parser
 
 
-def print_suggestions(prefix: str) -> None:
-    with open(FILE_NAME, "rb") as f:
-        trie = Trie.load(f)
-
-    for w in sorted(trie.words(prefix)):
-        print(w)
+def print_suggestions(prefix: str, index: str) -> None:
+    try:
+        with open(index, "rb") as f:
+            trie = Trie.load(f)
+    except FileNotFoundError:
+        sys.exit(1)
+    else:
+        for w in sorted(trie.words(prefix)):
+            print(w)
 
 
 def emit_autocomplete_script(shell: str) -> None:
@@ -53,6 +62,6 @@ def main():
     args = parser.parse_args()
 
     if args.action == "suggest":
-        print_suggestions(args.prefix)
+        print_suggestions(args.prefix, args.index)
     elif args.action == "autocompletion":
         emit_autocomplete_script(args.shell)
