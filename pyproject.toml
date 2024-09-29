@@ -16,7 +16,7 @@ requires-python = ">=3.8"
 pytest-suggest = "pytest_suggest.cli.suggest:main"
 
 [tool.setuptools.package-data]
-"*" = ["*.sh", "*.ps1"]
+"*" = ["*.bash", "*.ps1"]
 
 [project.entry-points."pytest11"]
 suggest = "pytest_suggest.plugin"
