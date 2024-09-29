@@ -85,7 +85,20 @@ class Node:
             Node: the child node.
         """
         node = Node(part_len=len(part), prefix=self.prefix + part, is_word=is_word)
-        self.children[part[0]] = node
+        return self.add_child_node(node)
+
+    def add_child_node(self, node: Node) -> Node:
+        """Adds the given node as a child of this node.
+
+        Also sets `self` as the parent node for the given node.
+
+        Args:
+            node (Node): the node to add.
+
+        Returns:
+            Node: the added node.
+        """
+        self.children[node.prefix_part[0]] = node
         node.parent = weakref.proxy(self)
         return node
 
@@ -130,11 +143,9 @@ class Node:
         """Creates a node from a dictionary representation."""
         prefix = prefix + data["p"]
         node = Node(prefix=prefix, part_len=data["l"], is_word=data["w"])
-        if children := data.get("c"):
-            for k, child in children.items():
-                child_node = Node._from_dict(child, prefix)
-                node.children[k] = child_node
-                child_node.parent = weakref.proxy(node)
+        for child in data.get("c", {}).values():
+            child_node = Node._from_dict(child, prefix)
+            node.add_child_node(child_node)
 
         return node
 
