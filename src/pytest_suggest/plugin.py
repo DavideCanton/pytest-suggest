@@ -1,12 +1,21 @@
-from pytest import Config, Item, Session, StashKey, hookimpl
+import pathlib
+
+from pytest import (
+    Config,
+    ExitCode,
+    Item,
+    Session,
+    Parser,
+    StashKey,
+    hookimpl,
+    version_tuple as pytest_version,
+)
 
 from pytest_suggest.constants import FILE_NAME
 from pytest_suggest.trie import Trie
 
-KEY = StashKey[Trie]()
 
-
-def pytest_addoption(parser):
+def pytest_addoption(parser: Parser) -> None:
     group = parser.getgroup("suggest")
     group.addoption(
         "--build-suggestion-index",
@@ -17,34 +26,53 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_report_header(config: Config):
-    if config.option.build_suggestion_index:
-        return "Building test index..."
-    return None
-
-
-def pytest_report_collectionfinish(config: Config, startdir: str, items: list[Item]):
-    if config.option.build_suggestion_index:
-        trie = config.stash[KEY]
-        return f"Built test index of size {len(trie)}"
-    return None
-
-
-def pytest_configure(config: Config):
+def pytest_configure(config: Config) -> None:
     if config.option.build_suggestion_index:
         config.option.verbose = -1
+        config.pluginmanager.register(SuggestPlugin())
 
 
-@hookimpl(tryfirst=True)
-def pytest_collection_modifyitems(session: Session, config: Config, items: list[Item]):
-    if not config.option.build_suggestion_index:
-        return
+class SuggestPlugin:
+    KEY = StashKey[Trie]()
 
-    trie = Trie.from_words(item.nodeid for item in items)
-    config.stash[KEY] = trie
+    def pytest_report_header(self, config: Config) -> str:
+        return "Building test index..."
 
-    with open(FILE_NAME, "wb") as f:
-        trie.save(f)
+    if pytest_version < (8, 0):
 
-    config.hook.pytest_deselected(items=items)
-    items.clear()
+        def pytest_report_collectionfinish(  # type: ignore
+            self, config: Config, startdir: str, items: list[Item]
+        ) -> str:
+            return self._collectionfinish(config)
+
+    else:
+
+        def pytest_report_collectionfinish(
+            self,
+            config: Config,
+            start_path: pathlib.Path,
+            items: list[Item],
+        ) -> str:
+            return self._collectionfinish(config)
+
+    def _collectionfinish(self, config: Config) -> str:
+        trie = config.stash[self.KEY]
+        return f"Built test index of size {len(trie)}"
+
+    @hookimpl(tryfirst=True)
+    def pytest_collection_modifyitems(
+        self, session: Session, config: Config, items: list[Item]
+    ) -> None:
+        trie = Trie.from_words(item.nodeid for item in items)
+        config.stash[self.KEY] = trie
+
+        with open(FILE_NAME, "wb") as f:
+            trie.save(f)
+
+        config.hook.pytest_deselected(items=items)
+        items.clear()
+
+    def pytest_sessionfinish(self, session: Session, exitstatus: ExitCode) -> None:
+        # avoid reporting "no test collected" when building the index
+        if exitstatus == ExitCode.NO_TESTS_COLLECTED:
+            session.exitstatus = ExitCode.OK
