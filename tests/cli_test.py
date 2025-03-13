@@ -50,7 +50,7 @@ def test_autocompletion(run_app, shell, capsys):
 def test_invalid_shell(check_error):
     check_error(
         ["autocompletion", "foo"],
-        "invalid choice: 'foo' (choose from 'bash', 'powershell')",
+        "invalid choice: 'foo' (choose from bash, powershell)",
     )
 
 

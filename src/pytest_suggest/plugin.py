@@ -1,14 +1,11 @@
-import pathlib
-
 from pytest import (
     Config,
     ExitCode,
     Item,
-    Session,
     Parser,
+    Session,
     StashKey,
     hookimpl,
-    version_tuple as pytest_version,
 )
 
 from pytest_suggest.constants import FILE_NAME
@@ -38,22 +35,8 @@ class SuggestPlugin:
     def pytest_report_header(self, config: Config) -> str:
         return "Building test index..."
 
-    if pytest_version < (8, 0):
-
-        def pytest_report_collectionfinish(  # type: ignore
-            self, config: Config, startdir: str, items: list[Item]
-        ) -> str:
-            return self._collectionfinish(config)
-
-    else:
-
-        def pytest_report_collectionfinish(
-            self,
-            config: Config,
-            start_path: pathlib.Path,
-            items: list[Item],
-        ) -> str:
-            return self._collectionfinish(config)
+    def pytest_report_collectionfinish(self, config: Config, **kw) -> str:
+        return self._collectionfinish(config)
 
     def _collectionfinish(self, config: Config) -> str:
         trie = config.stash[self.KEY]
