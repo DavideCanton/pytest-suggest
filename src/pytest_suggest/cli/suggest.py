@@ -65,3 +65,7 @@ def main():
         print_suggestions(args.prefix, args.index)
     elif args.action == "autocompletion":
         emit_autocomplete_script(args.shell)
+
+
+if __name__ == "__main__":
+    main()

@@ -33,4 +33,10 @@ branch = true
 directory = "coverage"
 
 [dependency-groups]
-dev = ["build>=1.2.2.post1", "pytest-cov>=5.0.0", "ruff>=0.10.0", "tox>=4.24.2"]
+dev = [
+    "build>=1.2.2.post1",
+    "pdbp>=1.6.1",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.10.0",
+    "tox>=4.24.2",
+]

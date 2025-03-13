@@ -3,11 +3,13 @@ from __future__ import annotations
 import bz2
 import weakref
 from collections.abc import Generator, Iterable
+from dataclasses import dataclass, field
 from typing import Any, BinaryIO
 
 import orjson
 
 
+@dataclass(slots=True, weakref_slot=True)
 class Node:
     """A node in a trie."""
 
@@ -20,39 +22,24 @@ class Node:
     """The length of the part represented by this node.
     
     This is the length of the part of the prefix that is represented by this node,
-    so for example if the prefix is "abc" and this node represents "ab", then this
+    so for example if the prefix is "abc" and this node represents "bc", then this
     value is 2.
     """
-    children: dict[str, Node]
+    children: dict[str, Node] = field(default_factory=dict)
     """The children of this node.
 
     This is a mapping of the first character of the child to the child node.
     """
-    is_word: bool
+    is_word: bool = False
     """Whether this node represents a word in the trie or just a prefix."""
 
-    parent: Node | None
+    parent: Node | None = field(init=False, default=None)
     """The parent of this node.
 
     This is a weak reference to the parent node.
 
     The root node has no parent and this value is None.
     """
-
-    __slots__ = ("prefix", "part_len", "children", "is_word", "parent", "__weakref__")
-
-    def __init__(
-        self,
-        prefix: str,
-        part_len: int,
-        children: dict[str, Node] | None = None,
-        is_word: bool = False,
-    ) -> None:
-        self.prefix = prefix
-        self.part_len = part_len
-        self.children = children or {}
-        self.is_word = is_word
-        self.parent = None
 
     @staticmethod
     def root() -> Node:
@@ -330,8 +317,9 @@ class Trie:
         """Finds the node for the given prefix."""
         current = self._root
         cur = 0
+        prefix_len = len(prefix)
 
-        while cur < len(prefix):
+        while cur < prefix_len:
             char = prefix[cur]
             child = current.get_child(char)
             if child is None:
@@ -339,7 +327,10 @@ class Trie:
             cur += child.part_len
             current = child
 
-        return current
+        if prefix == current.prefix[:prefix_len]:
+            return current
+        else:
+            return None
 
     def _compress(self) -> None:
         """Compresses the trie by merging nodes that have a single child."""
