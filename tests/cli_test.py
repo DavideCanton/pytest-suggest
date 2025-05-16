@@ -1,4 +1,6 @@
+from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
@@ -6,11 +8,17 @@ from pytest_suggest.cli import suggest
 from pytest_suggest.trie import Trie
 
 
+type ExitCode = int | str | None
+type RunAppFixture = Callable[[list[str]], ExitCode]
+type CheckErrorFixture = Callable[[list[str], str], None]
+type ShellType = Literal["bash", "powershell"]
+
+
 @pytest.fixture
-def run_app(monkeypatch: pytest.MonkeyPatch):
+def run_app(monkeypatch: pytest.MonkeyPatch) -> RunAppFixture:
     """Returns a function that, given a list of args, runs the main function."""
 
-    def run_app(args: list[str]) -> int | str | None:
+    def run_app(args: list[str]) -> ExitCode:
         monkeypatch.setattr("sys.argv", ["pytest-suggest"] + args)
         try:
             suggest.main()
@@ -22,7 +30,9 @@ def run_app(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.fixture
-def check_error(run_app, capsys):
+def check_error(
+    run_app: RunAppFixture, capsys: pytest.CaptureFixture[str]
+) -> CheckErrorFixture:
     """Returns a function that, given a list of args, checks that the provided error message is printed."""
 
     def run(args: list[str], error: str):
@@ -38,23 +48,25 @@ def check_error(run_app, capsys):
 
 
 @pytest.mark.parametrize("shell", ["bash", "powershell"])
-def test_autocompletion(run_app, shell, capsys):
+def test_autocompletion(
+    run_app: RunAppFixture, shell: ShellType, capsys: pytest.CaptureFixture[str]
+) -> None:
     run_app(["autocompletion", shell])
 
     captured = capsys.readouterr()
     assert not captured.err
 
-    assert captured.out.rstrip() == read_file(shell)
+    assert captured.out.rstrip() == _read_file(shell)
 
 
-def test_invalid_shell(check_error):
+def test_invalid_shell(check_error: CheckErrorFixture) -> None:
     check_error(
         ["autocompletion", "foo"],
         "invalid choice: 'foo' (choose from bash, powershell)",
     )
 
 
-def test_missing_shell(check_error):
+def test_missing_shell(check_error: CheckErrorFixture) -> None:
     check_error(
         ["autocompletion"],
         "the following arguments are required: shell",
@@ -62,7 +74,13 @@ def test_missing_shell(check_error):
 
 
 @pytest.mark.parametrize("custom_index_arg", ["no", "short", "long"])
-def test_suggest(run_app, capsys, monkeypatch, tmp_path, custom_index_arg: str):
+def test_suggest(
+    run_app: RunAppFixture,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    custom_index_arg: str,
+) -> None:
     test_trie = Trie.from_words(["foo", "bar", "foobar"])
 
     trie_path = tmp_path / "trie.pkl"
@@ -86,14 +104,19 @@ def test_suggest(run_app, capsys, monkeypatch, tmp_path, custom_index_arg: str):
     assert captured.out.rstrip() == "foo\nfoobar"
 
 
-def test_missing_prefix(check_error):
+def test_missing_prefix(check_error: CheckErrorFixture) -> None:
     check_error(
         ["suggest"],
         "the following arguments are required: prefix",
     )
 
 
-def test_index_not_built(run_app, tmp_path, capsys, monkeypatch):
+def test_index_not_built(
+    run_app: RunAppFixture,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(suggest, "FILE_NAME", str(tmp_path / "trie.pkl"))
     assert not Path(suggest.FILE_NAME).exists()
 
@@ -105,7 +128,7 @@ def test_index_not_built(run_app, tmp_path, capsys, monkeypatch):
     assert not captured.out
 
 
-def read_file(shell):
+def _read_file(shell: ShellType) -> str:
     if shell == "bash":
         file = "pytest-mycompletion.bash"
     elif shell == "powershell":

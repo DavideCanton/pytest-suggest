@@ -1,3 +1,4 @@
+from pathlib import Path
 import random
 import string
 
@@ -6,7 +7,7 @@ import pytest
 from pytest_suggest.trie import Node, Trie
 
 
-def _check_node_eq(node1: Node, node2: Node):
+def _check_node_eq(node1: Node, node2: Node) -> None:
     assert node1.prefix == node2.prefix
     assert node1.part_len == node2.part_len
     assert node1.is_word == node2.is_word
@@ -21,7 +22,7 @@ class TestNode:
         "root_prefix", (pytest.param("", id="no_prefix"), "root")
     )
 
-    def test_init(self):
+    def test_init(self) -> None:
         node = Node("prefix", 3, is_word=True)
 
         assert node.prefix == "prefix"
@@ -29,7 +30,7 @@ class TestNode:
         assert node.is_word is True
         assert node.children == {}
 
-    def test_root(self):
+    def test_root(self) -> None:
         node = Node.root()
 
         assert node.parent is None
@@ -38,7 +39,7 @@ class TestNode:
         assert node.is_word is False
         assert node.prefix == ""
 
-    def test_child(self):
+    def test_child(self) -> None:
         parent = Node.root()
 
         a = parent.add_child("abc")
@@ -59,7 +60,7 @@ class TestNode:
                 parent[k]
 
     @pytest.mark.parametrize("child_is_word", [True, False])
-    def test_merge(self, child_is_word):
+    def test_merge(self, child_is_word: bool) -> None:
         parent = Node.root()
 
         a = parent.add_child("a/", is_word=child_is_word)
@@ -74,7 +75,7 @@ class TestNode:
         assert b.parent is parent
         assert c.parent is parent
 
-    def test_merge_multiple_children(self):
+    def test_merge_multiple_children(self) -> None:
         parent = Node.root()
 
         parent.add_child("a$", is_word=True)
@@ -83,7 +84,7 @@ class TestNode:
         with pytest.raises(RuntimeError):
             parent.merge_with_child()
 
-    def test_merge_end(self):
+    def test_merge_end(self) -> None:
         parent = Node.root()
         c1 = parent.add_child("a/", is_word=True)
         c1.add_child("b$", is_word=True)
@@ -91,7 +92,7 @@ class TestNode:
         with pytest.raises(RuntimeError):
             c1.merge_with_child()
 
-    def test_str(self):
+    def test_str(self) -> None:
         node = Node.root()
         c1 = node.add_child("abc")
         gc1 = c1.add_child("def")
@@ -102,7 +103,7 @@ class TestNode:
         assert str(c2) == "Node 'bcd' -> []"
         assert str(gc1) == "Node 'abcdef' -> []"
 
-    def test_dict(self):
+    def test_dict(self) -> None:
         node = Node.root()
         c1 = node.add_child("abc")
         c1.add_child("def", is_word=True)
@@ -135,7 +136,7 @@ class TestNode:
         _check_node_eq(node, loaded)
 
     @root_prefix
-    def test_tree(self, root_prefix):
+    def test_tree(self, root_prefix: str) -> None:
         root = Node(root_prefix, len(root_prefix))
         c1 = root.add_child("abc", is_word=True)
 
@@ -168,7 +169,7 @@ class TestNode:
         assert root.tree() == s
 
     @root_prefix
-    def test_tree_only_root(self, root_prefix):
+    def test_tree_only_root(self, root_prefix: str) -> None:
         root = Node(root_prefix, len(root_prefix))
         if root_prefix:
             assert root.tree() == "root"
@@ -177,7 +178,7 @@ class TestNode:
 
     @root_prefix
     @pytest.mark.parametrize("grandchild", (True, False))
-    def test_tree_single_child_root(self, root_prefix, grandchild):
+    def test_tree_single_child_root(self, root_prefix: str, grandchild: bool) -> None:
         root = Node(root_prefix, len(root_prefix))
         n = root.add_child("abc", is_word=True)
 
@@ -200,7 +201,7 @@ WORDS = ["casa", "casale", "casino", "casotto", "casinino", "pippo", "pluto"]
 
 
 class TestTrie:
-    def test_build(self):
+    def test_build(self) -> None:
         trie = Trie.from_words(WORDS)
         root = self._build_trie_manually()
         _check_node_eq(trie._root, root)
@@ -218,8 +219,8 @@ class TestTrie:
         _check_node_eq(trie._root, trie2._root)
 
     @pytest.mark.slow
-    def test_save_load_big(self, tmp_path):
-        words = set()
+    def test_save_load_big(self, tmp_path: Path) -> None:
+        words = set[str]()
         chars = list(set(string.printable) - set(string.whitespace))
 
         rand = random.Random(42)
@@ -239,7 +240,7 @@ class TestTrie:
 
         _check_node_eq(trie._root, trie2._root)
 
-    def _build_trie_manually(self):
+    def _build_trie_manually(self) -> Node:
         return Node(
             "",
             0,
@@ -289,11 +290,11 @@ class TestTrie:
             ("baz", False),
         ],
     )
-    def test_contains(self, word, expected):
+    def test_contains(self, word: str, expected: bool) -> None:
         trie = Trie.from_words(WORDS)
         assert (word in trie) == expected
 
-    def test_words(self):
+    def test_words(self) -> None:
         trie = Trie.from_words(WORDS)
         assert set(trie.words()) == set(WORDS)
         assert set(trie) == set(WORDS)
@@ -313,15 +314,15 @@ class TestTrie:
             ("", WORDS),
         ],
     )
-    def test_words_prefixes(self, prefix, expected):
+    def test_words_prefixes(self, prefix: str, expected: str) -> None:
         trie = Trie.from_words(WORDS)
         assert set(trie.words(prefix)) == set(expected)
 
-    def test_str(self):
+    def test_str(self) -> None:
         trie = Trie.from_words(sorted(WORDS))
         assert str(trie) == trie._root.tree()
 
-    def test_duplicate_words(self):
+    def test_duplicate_words(self) -> None:
         words_with_duplicates = WORDS + WORDS
         trie = Trie.from_words(words_with_duplicates)
 

@@ -3,8 +3,8 @@ import pytest
 from pytest_suggest.trie import Trie
 
 
-@pytest.fixture()
-def setup_tests(pytester: pytest.Pytester):
+@pytest.fixture(autouse=True)
+def setup_tests(pytester: pytest.Pytester) -> None:
     pytester.makepyfile(
         test_1="""
         import pytest
@@ -64,8 +64,7 @@ def setup_tests(pytester: pytest.Pytester):
     )
 
 
-@pytest.mark.usefixtures("setup_tests")
-def test_build_index(pytester: pytest.Pytester):
+def test_build_index(pytester: pytest.Pytester) -> None:
     result = pytester.runpytest_subprocess("--build-suggestion-index")
     assert result.ret == pytest.ExitCode.OK
 
@@ -104,8 +103,7 @@ def test_build_index(pytester: pytest.Pytester):
     ]
 
 
-@pytest.mark.usefixtures("setup_tests")
-def test_run_without_build(pytester: pytest.Pytester):
+def test_run_without_build(pytester: pytest.Pytester) -> None:
     result = pytester.runpytest_subprocess()
     assert result.ret == pytest.ExitCode.TESTS_FAILED
 
@@ -113,8 +111,7 @@ def test_run_without_build(pytester: pytest.Pytester):
     assert not index.exists()
 
 
-@pytest.mark.usefixtures("setup_tests")
-def test_run_without_plugin(pytester: pytest.Pytester):
+def test_run_without_plugin(pytester: pytest.Pytester) -> None:
     # ensure the plugin is not loaded
     result = pytester.runpytest_subprocess(
         "-p", "no:suggest", "--build-suggestion-index"
