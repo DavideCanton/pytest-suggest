@@ -21,7 +21,7 @@ pytest-suggest = "pytest_suggest.cli.suggest:main"
 suggest = "pytest_suggest.plugin"
 
 [tool.pytest.ini_options]
-addopts = "--cov-report=html --cov-report=term --no-cov-on-fail -ra --import-mode=importlib"
+addopts = "--cov-report=html --cov-report=term --no-cov-on-fail -ra --import-mode=importlib --hypothesis-show-statistics"
 pythonpath = ["src"]
 markers = ["slow: mark test as slow"]
 
@@ -39,6 +39,7 @@ reportMissingTypeArgument = "error"
 [dependency-groups]
 dev = [
     "build>=1.2.2.post1",
+    "hypothesis>=6.131.17",
     "pdbp>=1.6.1",
     "pyright>=1.1.400",
     "pytest-cov>=5.0.0",

@@ -1,7 +1,11 @@
+from collections.abc import Iterable
+from itertools import tee
 from pathlib import Path
 import random
 import string
 
+import hypothesis as H
+from hypothesis import strategies as st
 import pytest
 
 from pytest_suggest.trie import Node, Trie
@@ -333,3 +337,20 @@ class TestTrie:
         # Ensure the duplicate words are still recognized as valid words
         for word in ["casa", "casino", "pippo"]:
             assert word in trie
+
+
+class TestTrieHyp:
+    @H.given(
+        words=st.iterables(st.text(min_size=3)),
+        other=st.text(),
+    )
+    @H.settings(print_blob=True, max_examples=500)
+    def test_trie(self, words: Iterable[str], other: str) -> None:
+        w1, w2 = tee(words)
+        trie = Trie.from_words(w1)
+
+        w = set(w2)
+        if other in w:
+            assert other in trie
+        else:
+            assert other not in trie
